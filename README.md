@@ -1,0 +1,2 @@
+# WeComFinanceSdk_python
+企业微信会话存档sdk封装
