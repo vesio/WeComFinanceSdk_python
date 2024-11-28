@@ -338,7 +338,7 @@ if __name__ == "__main__":
 
             ret_data = json.loads(chat_data)
             if ret_data.get("errcode") != 0:
-                raise Exception(f"调用接口失败")
+                raise Exception(f"调用接口失败:{ret_data}")
 
             origin_data_list = ret_data.get("chatdata")
             if len(origin_data_list) <= 0:
