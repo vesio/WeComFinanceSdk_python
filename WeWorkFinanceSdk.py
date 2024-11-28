@@ -290,11 +290,12 @@ if __name__ == "__main__":
         # 导入私钥
         with open(const_prikey_pem_path) as pk_file:
             privatekey = pk_file.read()
+        # 初始化RSA
+        rsakey = RSA.importKey(privatekey)
+        cipher = PKCS1_v1_5.new(rsakey)
 
         for chat_data in origin_data_list:
 
-            rsakey = RSA.importKey(privatekey)
-            cipher = PKCS1_v1_5.new(rsakey)
 
             rdkey_str = chat_data.get("encrypt_random_key")
             rdkey_decoded = base64.b64decode(rdkey_str)
