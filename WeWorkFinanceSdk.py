@@ -236,10 +236,41 @@ class WeWorkFinanceSdk:
             is_finish = media_data.contents.is_finish
             # 释放内存
             sdk_dll.FreeMediaData(media_data)
-            # 重置重试次数
-            retries = 0
         return bytes(total_data), len(total_data)
 
+
+    def download_media_file(self, file_id:str, file_save_path:str, proxy="", passwd="", timeout=30, max_retries=3):
+        # 媒体文件每次拉取的最大size为512k，因此超过512k的文件需要分片拉取。若该文件未拉取完整，mediaData中的is_finish会返回0，同时mediaData中的outindexbuf会返回下次拉取需要传入GetMediaData的indexbuf。
+        # indexbuf一般格式如右侧所示，”Range:bytes=524288-1048575“，表示这次拉取的是从524288到1048575的分片。单个文件首次拉取填写的indexbuf为空字符串，拉取后续分片时直接填入上次返回的indexbuf即可。
+        index_buf, is_finish, retries = create_string_buffer(512 * 1024), 0, 0
+        file_save_path_tmp = f'{file_save_path}.wxtmp'
+        while not is_finish and retries < max_retries:
+            media_data = sdk_dll.NewMediaData()
+            ret = sdk_dll.GetMediaData(self.sdk, index_buf.raw, file_id.encode(), proxy.encode(), passwd.encode(), timeout, media_data)
+            if ret != 0:
+                print(f"PullMediaData err ret: {ret}, retrying ({retries + 1}/{max_retries})...")
+                retries += 1
+                # 单个分片拉取失败建议重试拉取该分片，避免从头开始拉取。
+                sdk_dll.FreeMediaData(media_data)
+                time.sleep(3)
+                continue
+             # 二进制数据写入文件
+            with open(file_save_path_tmp, 'ab') as dstf:
+                dstf.write(ctypes.string_at(media_data.contents.data, media_data.contents.data_len))
+            # 获取下一次调用的index_buf
+            index_buf.raw = media_data.contents.outindexbuf[:media_data.contents.out_len]
+            # 获取finish标记
+            is_finish = media_data.contents.is_finish
+            # 释放内存
+            sdk_dll.FreeMediaData(media_data)
+        download_success = is_finish and retries < max_retries
+        if not download_success:
+            # 下载失败，删除临时文件
+            os.remove(file_save_path_tmp)
+        else:
+            # 下载成功, 修改临时文件名
+            os.rename(file_save_path_tmp, file_save_path)
+        return download_success
 
     @staticmethod
     def decrypt_data(encrypt_key, encrypt_chat_msg):
@@ -335,6 +366,7 @@ if __name__ == "__main__":
                     fileid = file_info.get('sdkfileid')
                     filename = file_info.get('filename')
                     filelen = file_info.get('filesize')
+                    md5sum = file_info.get('md5sum')
                     file_content, length = sdk.pull_media_file(file_id=fileid)
                     if len(file_content) == filelen:
                         with open(f'./{filename}', 'wb') as dstf:
