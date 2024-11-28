@@ -270,67 +270,77 @@ if __name__ == "__main__":
     # 假设corpid和key是有效的
     corp_id = "your_corpid"
     corp_key = "your_key"
-
+    start_seq = 0
+    limit = 10
+    has_prikey = False
     try:
         sdk = WeWorkFinanceSdk(corp_id, corp_key)
-
-        # 获取聊天数据
-        chat_data, length = sdk.get_chat_data(seq=0, limit=10)
-        if chat_data is None:
-            raise Exception(f"调用接口失败")
-
-        ret_data = json.loads(chat_data)
-        if ret_data.get("errcode") != 0:
-            raise Exception(f"调用接口失败")
-
-        origin_data_list = ret_data.get("chatdata")
-        if len(origin_data_list) <= 0:
-            raise Exception(f"会话存档数据为空")
-
         # 导入私钥
-        with open(const_prikey_pem_path) as pk_file:
-            privatekey = pk_file.read()
-        # 初始化RSA
-        rsakey = RSA.importKey(privatekey)
-        cipher = PKCS1_v1_5.new(rsakey)
+        if os.path.exists(const_prikey_pem_path):
+            with open(const_prikey_pem_path) as pk_file:
+                privatekey = pk_file.read()
+            # 初始化RSA
+            rsakey = RSA.importKey(privatekey)
+            cipher = PKCS1_v1_5.new(rsakey)
+            has_prikey = True
 
-        for chat_data in origin_data_list:
 
+        while True:
+            # 获取聊天数据
+            chat_data, length = sdk.get_chat_data(seq=start_seq, limit=limit)
+            if chat_data is None:
+                raise Exception(f"调用接口失败")
 
-            rdkey_str = chat_data.get("encrypt_random_key")
-            rdkey_decoded = base64.b64decode(rdkey_str)
+            ret_data = json.loads(chat_data)
+            if ret_data.get("errcode") != 0:
+                raise Exception(f"调用接口失败")
 
-            encrypt_key = str(bytes.decode(cipher.decrypt(rdkey_decoded, None)))
-            print(f'解密后的random_key: {encrypt_key}')
-            encrypt_msg = chat_data.get("encrypt_chat_msg")
-            byte_details, length = sdk.decrypt_data(encrypt_key, encrypt_msg)
-            data_details = json.loads(byte_details)
-            print(f'解密后的数据: {data_details}')
+            origin_data_list = ret_data.get("chatdata")
+            if len(origin_data_list) <= 0:
+                raise Exception(f"会话存档数据为空")
 
-            if data_details.get('msgtype') is None:
-                continue
-            elif data_details.get('msgtype') == 'text':
-                print(f'Text: {data_details.get("text").get("content")}')
-            elif data_details.get('msgtype') == 'file':
-                """
-                "file": {
-                    "md5sum": "72eae1fc232f042b5522ffb5a09db51d",
-                    "filename": "测试文件.txt",
-                    "fileext": "txt",
-                    "filesize": 281,
-                    "sdkfileid": "lYWExM4MzY="
-                }
-                """
-                file_info = data_details.get("file")
-                fileid = file_info.get('sdkfileid')
-                filename = file_info.get('filename')
-                filelen = file_info.get('filesize')
-                file_content, length = sdk.pull_media_file(file_id=fileid)
-                if len(file_content) == filelen:
-                    with open(f'./{filename}', 'wb') as dstf:
-                        dstf.write(file_content)
-                else:
-                    raise Exception(f"文件下载失败")
+            # 获取最大的seq
+            start_seq = max([p.get('seq') for p in origin_data_list])
+
+            for chat_data in origin_data_list:
+                if not has_prikey:
+                    print(f'密文聊天数据: {chat_data}')
+                    continue
+
+                rdkey_str = chat_data.get("encrypt_random_key")
+                rdkey_decoded = base64.b64decode(rdkey_str)
+
+                encrypt_key = str(bytes.decode(cipher.decrypt(rdkey_decoded, None)))
+                print(f'解密后的random_key: {encrypt_key}')
+                encrypt_msg = chat_data.get("encrypt_chat_msg")
+                byte_details, length = sdk.decrypt_data(encrypt_key, encrypt_msg)
+                data_details = json.loads(byte_details)
+                print(f'解密后的数据: {data_details}')
+
+                if data_details.get('msgtype') is None:
+                    continue
+                elif data_details.get('msgtype') == 'text':
+                    print(f'Text: {data_details.get("text").get("content")}')
+                elif data_details.get('msgtype') == 'file':
+                    """
+                    "file": {
+                        "md5sum": "72eae1fc232f042b5522ffb5a09db51d",
+                        "filename": "测试文件.txt",
+                        "fileext": "txt",
+                        "filesize": 281,
+                        "sdkfileid": "lYWExM4MzY="
+                    }
+                    """
+                    file_info = data_details.get("file")
+                    fileid = file_info.get('sdkfileid')
+                    filename = file_info.get('filename')
+                    filelen = file_info.get('filesize')
+                    file_content, length = sdk.pull_media_file(file_id=fileid)
+                    if len(file_content) == filelen:
+                        with open(f'./{filename}', 'wb') as dstf:
+                            dstf.write(file_content)
+                    else:
+                        raise Exception(f"文件下载失败")
     except Exception as e:
         print(f"Error: {e}")
     finally:
