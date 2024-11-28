@@ -3,6 +3,7 @@ import ctypes
 import json
 import os
 import time
+import hashlib
 from ctypes import c_char_p, c_int, c_ulonglong, POINTER, create_string_buffer
 
 from Crypto.Cipher import PKCS1_v1_5
@@ -239,11 +240,14 @@ class WeWorkFinanceSdk:
         return bytes(total_data), len(total_data)
 
 
-    def download_media_file(self, file_id:str, file_save_path:str, proxy="", passwd="", timeout=30, max_retries=3):
+    def download_media_file(self, file_id:str, file_save_path:str, md5sum="", proxy="", passwd="", timeout=30, max_retries=3):
         # 媒体文件每次拉取的最大size为512k，因此超过512k的文件需要分片拉取。若该文件未拉取完整，mediaData中的is_finish会返回0，同时mediaData中的outindexbuf会返回下次拉取需要传入GetMediaData的indexbuf。
         # indexbuf一般格式如右侧所示，”Range:bytes=524288-1048575“，表示这次拉取的是从524288到1048575的分片。单个文件首次拉取填写的indexbuf为空字符串，拉取后续分片时直接填入上次返回的indexbuf即可。
         index_buf, is_finish, retries = create_string_buffer(512 * 1024), 0, 0
         file_save_path_tmp = f'{file_save_path}.wxtmp'
+        if len(md5sum) > 0:
+            hmd5 = hashlib.md5()
+
         while not is_finish and retries < max_retries:
             media_data = sdk_dll.NewMediaData()
             ret = sdk_dll.GetMediaData(self.sdk, index_buf.raw, file_id.encode(), proxy.encode(), passwd.encode(), timeout, media_data)
@@ -256,14 +260,24 @@ class WeWorkFinanceSdk:
                 continue
              # 二进制数据写入文件
             with open(file_save_path_tmp, 'ab') as dstf:
+                data = ctypes.string_at(media_data.contents.data, media_data.contents.data_len)
                 dstf.write(ctypes.string_at(media_data.contents.data, media_data.contents.data_len))
+                if len(md5sum) > 0:
+                    hmd5.update(data)
+            
             # 获取下一次调用的index_buf
             index_buf.raw = media_data.contents.outindexbuf[:media_data.contents.out_len]
             # 获取finish标记
             is_finish = media_data.contents.is_finish
             # 释放内存
             sdk_dll.FreeMediaData(media_data)
-        download_success = is_finish and retries < max_retries
+
+        md5_check_success = True
+        if len(md5sum) > 0:
+            if md5sum != hmd5.hexdigest():
+                md5_check_success = False
+        
+        download_success = is_finish and retries < max_retries and md5_check_success
         if not download_success:
             # 下载失败，删除临时文件
             os.remove(file_save_path_tmp)
