@@ -10,9 +10,9 @@ from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 
 if os.name == "nt":
-    sdk_dll = ctypes.CDLL("./WeWorkFinanceSdk.dll")
+    sdk_dll = ctypes.CDLL("./windows/WeWorkFinanceSdk.dll")
 elif os.name == 'posix':
-    sdk_dll = ctypes.CDLL("./libWeWorkFinanceSdk_C.so")
+    sdk_dll = ctypes.CDLL("./linux-x86/libWeWorkFinanceSdk_C.so")
 else:
     raise NotImplementedError("Unsupported OS")
 
@@ -387,6 +387,8 @@ if __name__ == "__main__":
                             dstf.write(file_content)
                     else:
                         raise Exception(f"文件下载失败")
+            # 一分钟内不得超过1000次调用
+            time.sleep(5)
     except Exception as e:
         print(f"Error: {e}")
     finally:
