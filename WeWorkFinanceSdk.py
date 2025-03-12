@@ -4,7 +4,6 @@ import json
 import os
 import time
 import hashlib
-from ctypes import c_char_p, c_int, c_ulonglong, POINTER, create_string_buffer
 
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
@@ -20,16 +19,16 @@ const_prikey_pem_path = "./prikey.pem"
 
 # 定义SDK结构体
 class Slice(ctypes.Structure):
-    _fields_ = [("buf", c_char_p),
-                ("len", c_int)]
+    _fields_ = [("buf", ctypes.c_char_p),
+                ("len", ctypes.c_int)]
 
 class MediaData(ctypes.Structure):
-    _fields_ = [("outindexbuf", c_char_p),
-                ("out_len", c_int),
+    _fields_ = [("outindexbuf", ctypes.c_char_p),
+                ("out_len", ctypes.c_int),
                 # data 是二进制文件所以必须用 c_void_p , 不能用 c_char_p
                 ("data", ctypes.c_void_p),
-                ("data_len", c_int),
-                ("is_finish", c_int)]
+                ("data_len", ctypes.c_int),
+                ("is_finish", ctypes.c_int)]
 
 # 定义SDK函数原型
 sdk_dll.NewSdk.restype = ctypes.c_void_p
@@ -49,8 +48,8 @@ sdk_dll.NewSdk.restype = ctypes.c_void_p
 	 */
 	 int Init(WeWorkFinanceSdk_t* sdk, const char* corpid, const char* secret);
 """
-sdk_dll.Init.argtypes = [ctypes.c_void_p, c_char_p, c_char_p]
-sdk_dll.Init.restype = c_int
+sdk_dll.Init.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p]
+sdk_dll.Init.restype = ctypes.c_int
 
 """
 	/**
@@ -75,8 +74,8 @@ sdk_dll.Init.restype = c_int
 	 */		
 	 int GetChatData(WeWorkFinanceSdk_t* sdk, unsigned long long seq, unsigned int limit, const char *proxy,const char* passwd, int timeout,Slice_t* chatDatas);
 """
-sdk_dll.GetChatData.argtypes = [ctypes.c_void_p, c_ulonglong, c_int, c_char_p, c_char_p, c_int, POINTER(Slice)]
-sdk_dll.GetChatData.restype = c_int
+sdk_dll.GetChatData.argtypes = [ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(Slice)]
+sdk_dll.GetChatData.restype = ctypes.c_int
 
 """
 	/**
@@ -90,8 +89,8 @@ sdk_dll.GetChatData.restype = c_int
      */
 	 int DecryptData(const char* encrypt_key, const char* encrypt_msg, Slice_t* msg);
 """
-sdk_dll.DecryptData.argtypes = [c_char_p, c_char_p, POINTER(Slice)]
-sdk_dll.DecryptData.restype = c_int
+sdk_dll.DecryptData.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.POINTER(Slice)]
+sdk_dll.DecryptData.restype = ctypes.c_int
 
 """
 	/**
@@ -115,8 +114,8 @@ sdk_dll.DecryptData.restype = c_int
 	 int GetMediaData(WeWorkFinanceSdk_t* sdk, const char* indexbuf,
                      const char* sdkFileid,const char *proxy,const char* passwd, int timeout, MediaData_t* media_data);
 """
-sdk_dll.GetMediaData.argtypes = [ctypes.c_void_p, c_char_p, c_char_p, c_char_p, c_char_p, c_int, POINTER(MediaData)]
-sdk_dll.GetMediaData.restype = c_int
+sdk_dll.GetMediaData.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int, ctypes.POINTER(MediaData)]
+sdk_dll.GetMediaData.restype = ctypes.c_int
 
 """
     /**
@@ -131,7 +130,7 @@ sdk_dll.DestroySdk.argtypes = [ctypes.c_void_p]
     //--------------下面接口为了其他语言例如python等调用c接口，酌情使用--------------
     Slice_t* NewSlice();
 """
-sdk_dll.NewSlice.restype = POINTER(Slice)
+sdk_dll.NewSlice.restype = ctypes.POINTER(Slice)
 """
     /**
      * @brief 释放slice，和NewSlice成对使用
@@ -139,7 +138,7 @@ sdk_dll.NewSlice.restype = POINTER(Slice)
      */
 	 void FreeSlice(Slice_t* slice);
 """
-sdk_dll.FreeSlice.argtypes = [POINTER(Slice)]
+sdk_dll.FreeSlice.argtypes = [ctypes.POINTER(Slice)]
 
 """
     /**
@@ -150,13 +149,13 @@ sdk_dll.FreeSlice.argtypes = [POINTER(Slice)]
      */
 	 char* GetContentFromSlice(Slice_t* slice);
 """
-sdk_dll.GetContentFromSlice.argtypes = [POINTER(Slice)]
+sdk_dll.GetContentFromSlice.argtypes = [ctypes.POINTER(Slice)]
 sdk_dll.GetContentFromSlice.restype = ctypes.c_char_p
 
 """
 	 int GetSliceLen(Slice_t* slice);
 """
-sdk_dll.GetSliceLen.argtypes = [POINTER(Slice)]
+sdk_dll.GetSliceLen.argtypes = [ctypes.POINTER(Slice)]
 sdk_dll.GetSliceLen.restype = ctypes.c_int
 
 
@@ -170,17 +169,17 @@ sdk_dll.GetSliceLen.restype = ctypes.c_int
 	 int GetDataLen(MediaData_t* media_data);
 	 int IsMediaDataFinish(MediaData_t* media_data);
 """
-sdk_dll.NewMediaData.restype = POINTER(MediaData)
-sdk_dll.FreeMediaData.argtypes = [POINTER(MediaData)]
-sdk_dll.GetOutIndexBuf.argtypes = [POINTER(MediaData)]
+sdk_dll.NewMediaData.restype = ctypes.POINTER(MediaData)
+sdk_dll.FreeMediaData.argtypes = [ctypes.POINTER(MediaData)]
+sdk_dll.GetOutIndexBuf.argtypes = [ctypes.POINTER(MediaData)]
 sdk_dll.GetOutIndexBuf.restype = ctypes.c_char_p
-sdk_dll.GetData.argtypes = [POINTER(MediaData)]
+sdk_dll.GetData.argtypes = [ctypes.POINTER(MediaData)]
 sdk_dll.GetData.restype = ctypes.c_void_p
-sdk_dll.GetIndexLen.argtypes = [POINTER(MediaData)]
+sdk_dll.GetIndexLen.argtypes = [ctypes.POINTER(MediaData)]
 sdk_dll.GetIndexLen.restype = ctypes.c_int
-sdk_dll.GetDataLen.argtypes = [POINTER(MediaData)]
+sdk_dll.GetDataLen.argtypes = [ctypes.POINTER(MediaData)]
 sdk_dll.GetDataLen.restype = ctypes.c_int
-sdk_dll.IsMediaDataFinish.argtypes = [POINTER(MediaData)]
+sdk_dll.IsMediaDataFinish.argtypes = [ctypes.POINTER(MediaData)]
 sdk_dll.IsMediaDataFinish.restype = ctypes.c_int
 
 class WeWorkFinanceSdk:
@@ -221,7 +220,7 @@ class WeWorkFinanceSdk:
 
 
     def pull_media_file(self, file_id:str, proxy="", passwd="", timeout=30, max_retries=3):
-        index_buf = create_string_buffer(512 * 1024)
+        index_buf = ctypes.create_string_buffer(512 * 1024)
         total_data = bytearray()
         is_finish = 0
         retries = 0
@@ -250,7 +249,7 @@ class WeWorkFinanceSdk:
     def download_media_file(self, file_id:str, file_save_path:str, md5sum="", proxy="", passwd="", timeout=30, max_retries=3):
         # 媒体文件每次拉取的最大size为512k，因此超过512k的文件需要分片拉取。若该文件未拉取完整，mediaData中的is_finish会返回0，同时mediaData中的outindexbuf会返回下次拉取需要传入GetMediaData的indexbuf。
         # indexbuf一般格式如右侧所示，”Range:bytes=524288-1048575“，表示这次拉取的是从524288到1048575的分片。单个文件首次拉取填写的indexbuf为空字符串，拉取后续分片时直接填入上次返回的indexbuf即可。
-        index_buf, is_finish, retries = create_string_buffer(512 * 1024), 0, 0
+        index_buf, is_finish, retries = ctypes.create_string_buffer(512 * 1024), 0, 0
         file_save_path_tmp = f'{file_save_path}.wxtmp'
         if len(md5sum) > 0:
             hmd5 = hashlib.md5()
