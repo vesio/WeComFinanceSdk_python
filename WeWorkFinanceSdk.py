@@ -15,7 +15,7 @@ elif os.name == 'posix':
 else:
     raise NotImplementedError("Unsupported OS")
 
-const_prikey_pem_path = "./prikey.pem"
+
 
 # 定义SDK结构体
 class Slice(ctypes.Structure):
@@ -321,8 +321,10 @@ if __name__ == "__main__":
     # 假设corpid和key是有效的
     corp_id = "your_corpid"
     corp_key = "your_key"
+    # 有私钥才能看到明文
+    const_prikey_pem_path = "./prikey.pem"
     start_seq = 0
-    limit = 10
+    record_limit = 10
     has_prikey = False
     try:
         sdk = WeWorkFinanceSdk(corp_id, corp_key)
@@ -338,7 +340,7 @@ if __name__ == "__main__":
 
         while True:
             # 获取聊天数据
-            chat_data, length = sdk.get_chat_data(seq=start_seq, limit=limit)
+            chat_data, length = sdk.get_chat_data(seq=start_seq, limit=record_limit)
             if chat_data is None:
                 raise Exception(f"调用接口失败")
 
