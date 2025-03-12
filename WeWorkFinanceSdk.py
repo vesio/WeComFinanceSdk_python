@@ -191,7 +191,7 @@ class WeWorkFinanceSdk:
             raise Exception(f"Init SDK failed with error code: {ret}")
 
 
-    def get_chat_data(self, seq, limit, proxy="", passwd="", timeout=30):
+    def get_chat_data(self, seq, limit, proxy="", passwd="", timeout=30, max_retries=3):
         """
         获取聊天数据
         :param seq:
@@ -203,6 +203,13 @@ class WeWorkFinanceSdk:
         """
         chat_datas = sdk_dll.NewSlice()
         ret = sdk_dll.GetChatData(self.sdk, seq, limit, proxy.encode(), passwd.encode(), timeout, chat_datas)
+        retries = 0
+        while ret != 0 and ret == 10001 and retries < max_retries:
+            print(f"GetChatData err ret: {ret}, retrying ({retries + 1}/{max_retries})...")
+            time.sleep(3)
+            ret = sdk_dll.GetChatData(self.sdk, seq, limit, proxy.encode(), passwd.encode(), timeout, chat_datas)
+            retries += 1
+
         if ret != 0:
             print(f"Get data failed, return code: {ret}.")
             sdk_dll.FreeSlice(chat_datas)
