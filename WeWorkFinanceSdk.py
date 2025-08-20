@@ -360,11 +360,20 @@ if __name__ == "__main__":
                     print(f'密文聊天数据: {chat_data}')
                     continue
 
+                pubkey_ver = chat_data.get('publickey_ver')
                 rdkey_str = chat_data.get("encrypt_random_key")
                 rdkey_decoded = base64.b64decode(rdkey_str)
+                try:
+                    encrypt_key = str(bytes.decode(cipher.decrypt(rdkey_decoded, None)))
+                    if encrypt_key is None or len(encrypt_key) == 0:
+                        print(f'解密失败，请检查私钥/密钥配置')
+                        continue
+                    print(f'解密后的random_key: {encrypt_key}')
+                except Exception as e:
+                    # 大概率是 私钥/公钥 不匹配导致的
+                    print(f'解密失败，当前密钥版本: {pubkey_ver}')
+                    continue
 
-                encrypt_key = str(bytes.decode(cipher.decrypt(rdkey_decoded, None)))
-                print(f'解密后的random_key: {encrypt_key}')
                 encrypt_msg = chat_data.get("encrypt_chat_msg")
                 byte_details, length = sdk.decrypt_data(encrypt_key, encrypt_msg)
                 data_details = json.loads(byte_details)
